@@ -6,3 +6,11 @@ repl-temp-*
 
 *.jar
 TAGS
+
+# project directories
+dist/
+import/
+lib/
+node_modules/
+proj/
+www/
