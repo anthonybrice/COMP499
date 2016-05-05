@@ -9,7 +9,7 @@ TAGS
 
 # project directories
 dist/
-import/
+import/music
 lib/
 node_modules/
 proj/

@@ -4,9 +4,11 @@
   "description": "",
   "main": "",
   "dependencies": {
+    "less": "^2.6.1",
     "mongodb": "^2.1.7",
     "musicmetadata": "^2.0.2",
-    "node-dir": "^0.1.11"
+    "node-dir": "^0.1.11",
+    "yuicompressor": "^2.4.8"
   },
   "devDependencies": {
     "assert": "^1.3.0"
@@ -16,12 +18,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/anthonybrice/asl-helper.git"
+    "url": "git+https://github.com/anthonybrice/COMP499.git"
   },
   "author": "",
   "license": "GPL-3.0",
   "bugs": {
-    "url": "https://github.com/anthonybrice/asl-helper/issues"
+    "url": "https://github.com/anthonybrice/COMP499/issues"
   },
-  "homepage": "https://github.com/anthonybrice/asl-helper#readme"
+  "homepage": "https://github.com/anthonybrice/COMP499#readme"
 }

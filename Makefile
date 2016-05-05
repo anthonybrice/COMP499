@@ -83,7 +83,7 @@ dist: ${DISTDIRS} build
 	@cp ${MINTARGETS} ${PUBCSS}
 	@cp ${ELMTARGETS} ${PUBLIC}
 	@cp -r ${STATIC}fonts ${PUBSTATIC}
-	@cp ${LIB}restheart.jar ${DIST}
+	@cp ${LIB}/restheart-2.0.0/restheart.jar ${DIST}
 	@cp -r etc/ ${DIST}
 
 restheart:
