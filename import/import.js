@@ -24,7 +24,6 @@ function addMusicFiles(db, coll) {
     if (err) throw err
     files = files.filter(file => /.*mp3|.*flac/.test(file))
     let count = files.length
-    console.log(count)
 
     files.forEach(file => {
       mm(fs.createReadStream(file), (err, metadata) => {
