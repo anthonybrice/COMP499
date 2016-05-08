@@ -10,22 +10,17 @@ import Bootstrap.Html exposing (container_, containerFluid_, colXs_)
 import Json.Decode as Decode
 import Json.Decode exposing ((:=))
 import Json.Encode as Encode
+import Json.Encode exposing (Value)
 
 import Task
 import Http
 
+import List exposing (..)
 import List.Extra exposing ((!!))
 
 import Config
 
-import Debug
-
-
-keys : List String
-keys = [ "albumartist"
-       , "album"
-       , "year"
-       ]
+--import Debug
 
 
 type alias Model = MillerColumn
@@ -35,20 +30,21 @@ type alias MillerColumn =
   { key : String
   , selected : List Int
   , values : List String
-  , coll : String
+  , keys : List String
   }
 
 
-init : String -> Encode.Value -> String -> (Model, Effects Action)
-init coll' query key' =
-  ( { key = key', selected = [], values = [], coll = coll' }
-  , getValues coll' query key'
+init : List (String, Value) -> String -> (Model, Effects Action)
+init query' key' =
+  ( { key = key', selected = [], values = [], keys = [] }
+  , getKeys query'
   )
 
 
 type Action
   = NewValues (List String)
-  | UpdateValues
+  | NewKeys (List String)
+  | UpdateValues (List (String, List String))
   | UpdateKey Int
 
 
@@ -58,17 +54,19 @@ update action model =
     NewValues values' ->
       ( { model | values = values', selected = [] }, Effects.none)
 
-    UpdateValues ->
-      let
-        query = Encode.object []
-      in
-        (model, getValues model.coll query model.key)
+    NewKeys keys' ->
+      ( { model | keys = keys' }
+      , Effects.task <| Task.succeed <| UpdateKey 0
+      )
+
+    UpdateValues query ->
+        (model, getValues query model.key)
 
     UpdateKey int ->
       let
-        key' = Maybe.withDefault "" <| keys !! int
+        key' = Maybe.withDefault "" <| model.keys !! int
       in
-        ( { model | key = key' }, Effects.task <| Task.succeed UpdateValues)
+        ( { model | key = key' }, Effects.none)
 
 
 (=>) : a -> b -> (a, b)
@@ -86,21 +84,27 @@ view address model =
       Decode.at ["target", "selectedIndex"] Decode.int
   in
     colXs_ 1
-    [ select [newKeyEvent] <| List.map (\v -> option [] [text v]) keys
+    [ select [newKeyEvent] <| map (\v -> option [] [text v]) model.keys
     , select [ attribute "multiple" "multiple"
              , attribute "size" <| toString (40)
              ]
-        <| List.map (\v -> option [] [text v]) (model.values)
+        <| map (\v -> option [] [text v]) model.values
     ]
 
 
-getValues : String -> Encode.Value -> String -> Effects Action
-getValues coll query key =
+getValues : List (String, List String) -> String -> Effects Action
+getValues query key =
   let
+    --query' = Encode.object query |> Encode.encode 0
+    query' =
+      map (\ (k, v) -> (k, map Encode.string v |> Encode.list)) query
+        |> Encode.object
+        |> Encode.encode 0
     valuesUrl =
-      Http.url (Config.db ++ coll ++ "/_aggrs/group2")
-            [ "avars" => ("{'key': '$" ++ key ++ "',"
-                         ++ "'matchQuery': " ++ Encode.encode 0 query ++ "}"
+      Http.url (Config.coll ++ "_aggrs/group2")
+            [ "avars" => ("{ key: { " ++ key ++ ": 1 },"
+                            ++ " matchQuery: " ++ query' ++ ","
+                            ++ " groupBy: '$" ++ key ++ "'}"
                          )
             , "hal" => "c"
             ]
@@ -114,4 +118,25 @@ getValues coll query key =
     Http.get decodeValues valuesUrl
       |> flip Task.onError (always (Task.succeed [""]))
       |> Task.map NewValues
+      |> Effects.task
+
+getKeys : List (String, Value) -> Effects Action
+getKeys query =
+  let
+    query' = Encode.object query |> Encode.encode 0
+    keysUrl =
+      Http.url (Config.coll ++ "_aggrs/getKeys")
+            [ "avars" => ("{ query: " ++ query' ++ " }")
+            , "hal" => "c"
+            ]
+
+    decodeKeys =
+      Decode.at [ "_embedded", "rh:result" ] <| Decode.list decodeKey
+
+    decodeKey =
+      Decode.at [ "_id" ] Decode.string
+  in
+    Http.get decodeKeys keysUrl
+      |> flip Task.onError (always (Task.succeed [""]))
+      |> Task.map NewKeys
       |> Effects.task

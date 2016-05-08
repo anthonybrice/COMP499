@@ -7,7 +7,7 @@ import Html exposing (Html)
 app : StartApp.App Miller.Model
 app =
   StartApp.start
-    { init = init "songs" "albumartist" 2
+    { init = init "albumartist" 2
     , update = update
     , view = view
     , inputs = [firstResize, resizes]

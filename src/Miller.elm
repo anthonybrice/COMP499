@@ -11,15 +11,17 @@ import Html.Attributes exposing (..)
 import Bootstrap.Html exposing (container_, containerFluid_, row_)
 import Window
 
-import Json.Decode as Decode
-import Json.Decode exposing ((:=))
 import Json.Encode as Encode
 
-import List exposing (head, length, map, take, drop, tail, filter, member)
+import List exposing (head, length, map, take, drop, tail, filter, member
+                     , repeat, unzip, map2, append)
+
+import List.Extra exposing ((!!))
 
 import MillerColumn
 import MillerColumn exposing (MillerColumn)
 
+import Debug exposing (..)
 
 -----------
 -- MODEL --
@@ -28,99 +30,137 @@ import MillerColumn exposing (MillerColumn)
 type alias Model = Miller
 
 
+type alias ID = Int
+
+
 -- Miller is a zipper list of Miller columns
 type alias Miller =
-  { focus : List MillerColumn
-  , breadcrumbs : List MillerColumn
-  , coll : String
+  { millerColumns : List (ID, List (String, List String), MillerColumn)
+  , nextID : ID
   , height : Int
   }
 
 
-init : String -> String -> Int -> (Model, Effects Action)
-init coll' key' numColumns =
+init : String -> Int -> (Model, Effects Action)
+init key' numColumns =
   let
-    --columnList =
-    (focus', focusFx) = MillerColumn.init coll' (Encode.object []) key'
-    model = { focus = [focus']
-            , breadcrumbs = []
-            , coll = coll'
+    (mills, millerColumnsFx) =
+      unzip <| repeat numColumns (MillerColumn.init [] key')
+
+    insertQuery (x, y) = (x, [], y)
+    millerColumns' = map2 (,) [0..(numColumns - 1)] mills
+                     |> map insertQuery
+
+    model = { millerColumns = millerColumns'
+            , nextID = numColumns
             , height = 100
             }
-  in ( model
-     , Effects.batch
-         [ Effects.map Focus focusFx
-         , sendInitial
-         ]
-     )
+
+    mcFx = map2 Effects.map (map SubMsg [0..(numColumns - 1)]) millerColumnsFx
+  in
+    ( model
+    , Effects.batch
+        [ Effects.batch mcFx
+        , sendInitial
+        ]
+    )
 
 ------------
 -- UPDATE --
 ------------
 
 type Action
-  = Focus MillerColumn.Action
+  = SubMsg ID MillerColumn.Action
   | UpdateSize (Int, Int)
-  --| SubMsg Int MillerColumn.Action
-  --| UpdateSelected Int
-  --| InsertColumn
   | NoOp
 
 
 update : Action -> Model -> (Model, Effects Action)
 update action model =
-  let
-    focus = Maybe.withDefault (MillerColumn "" [] [] "")
-              <| head model.focus
-    select = focus.selected
+  case action of
+    SubMsg msgId msg ->
+      let
+        subUpdate ((id, q, mc) as entry) =
+          if id == msgId then
+            let
+              (newMc, fx) = MillerColumn.update msg mc
+            in
+              ( (id, q, newMc)
+              , Effects.map (SubMsg id) fx
+              )
+          else
+            (entry, Effects.none)
 
-    aft = Maybe.withDefault [] <| tail model.focus
-  in
-    case action of
-      Focus action ->
-        let
-          (focus', fx) = MillerColumn.update action focus
-        in
-          ( { model | focus = [focus'] }
-          , Effects.map Focus fx
-          )
+        (newMcs, fxList) =
+          model.millerColumns
+            |> map subUpdate
+            |> unzip
+      in
+        ( { model | millerColumns = newMcs }
+        , Effects.batch fxList
+        )
+      -- let
+      --   subUpdate ((id, mc) as entry) =
+      --     if id == msgId then
+      --       let
+      --         q = if id > 0 then
+      --               let
+      --                 enc i = mc.values !! i |> Maybe.withDefault "" |> Encode.string
+      --                 values = map enc mc.selected
+      --               in
+      --                 model.millerColumns !! (id - 1)
+      --                 |> Maybe.withDefault (0, MillerColumn "" [] [] [])
+      --                 |> snd |> .query
+      --                 |> append [(mc.key, Encode.list values)]
+      --             else
+      --               mc.query
 
-      UpdateSize (h, w) ->
-        ( { model | height = h }, Effects.none)
+      --         (newMc, fx) = MillerColumn.update action { mc | query = q }
+      --       in
+      --         ( (id, newMc)
+      --         , Effects.map (Modify id) fx
+      --         )
+      --     else
+      --       (entry, Effects.none)
 
-      NoOp -> (model, Effects.none)
+      --   (newMcList, fxList) =
+      --     model.millerColumns
+      --       |> map subUpdate
+      --       |> unzip
+      -- in
+      --   ( { model | millerColumns = newMcList }
+      --   , Effects.batch fxList
+      --   )
+
+    UpdateSize (h, w) ->
+      ( { model | height = h }, Effects.none)
+
+    NoOp -> (model, Effects.none)
+
 
 ----------
 -- VIEW --
 ----------
 
-(=>) : a -> b -> (a, b)
+-- (=>) : a -> b -> (a, b)
+-- (=>) = (,)
+
+(=>) : a -> b -> (a,b)
 (=>) = (,)
 
 
 view : Signal.Address Action -> Model -> Html
 view address model =
-  let
-    focus =
-      Maybe.withDefault (MillerColumn "" [] [] "") <| head model.focus
+  containerFluid_
+  [ div [] [stylesheet Config.stylesheet]
+  , row_
+      (map (viewMillerColumn address) model.millerColumns)
+  ]
 
-    styles =
-      [ stylesheet <| Config.stylesheet ]
 
-  in
-    containerFluid_
-    [ div [] styles
-    , row_
-        (List.map (elementView address) <| (List.reverse model.breadcrumbs) ++ model.focus)
-    -- , select [ attribute "multiple" "multiple"
-    --          , attribute "size" <| toString (40)
-    --          ]
-    --     <| map (\v -> option [] [text v]) (focus.values)
-    ]
-
-elementView : Signal.Address Action -> MillerColumn -> Html
-elementView address model =
-  MillerColumn.view (Signal.forwardTo address Focus) model
+viewMillerColumn : Signal.Address Action -> (ID, List (String, List String), MillerColumn) -> Html
+viewMillerColumn address (id, query, model) =
+  MillerColumn.view (Signal.forwardTo address (SubMsg id)) model
 
 
 stylesheet : String -> Html
@@ -140,27 +180,6 @@ stylesheet href =
 -------------
 -- EFFECTS --
 -------------
-
--- getValues : String -> String -> Effects Action
--- getValues coll key =
---   let
---     valuesUrl =
---       Http.url (Config.db ++ coll ++ "/_aggrs/group")
---             [ "avars" => ("{'key': '$" ++ key ++ "'}")
---             , "hal" => "c"
---             ]
-
---     decodeValues =
---       Decode.at [ "_embedded", "rh:result" ] <| Decode.list decodeValue
-
---     decodeValue =
---       Decode.at [ "_id" ] Decode.string
---   in
---     Http.get decodeValues valuesUrl
---       |> flip Task.onError (always (Task.succeed [""]))
---       |> Task.map GetValues
---       |> Effects.task
-
 
 appStartMailbox : Signal.Mailbox ()
 appStartMailbox =
@@ -182,8 +201,3 @@ sendInitial =
   Signal.send appStartMailbox.address ()
     |> Task.map (always NoOp)
     |> Effects.task
-
-
-parseArgs : Model -> Encode.Value
-parseArgs model =
-  Encode.object [("foo", Encode.string "bar")]
