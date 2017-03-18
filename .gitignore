@@ -1,8 +1,10 @@
-# elm-package generated files
-# elm-package.json
-elm-stuff/
-# elm-repl generated files
-repl-temp-*
+# purescript stuff
+/bower_components/
+/node_modules/
+/.pulp-cache/
+/output/
+/.psc*
+/.psa*
 
 *.jar
 TAGS
@@ -10,7 +12,7 @@ TAGS
 # project directories
 dist/
 import/music
-lib/
+lib/bootstrap
 node_modules/
 proj/
 www/
