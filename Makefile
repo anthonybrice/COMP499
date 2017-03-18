@@ -118,6 +118,9 @@ clean:
 # Prints the value of a variable on the command line
 print-%  : ; @echo $* = $($*)
 
+tree:
+	tree -I "test*|node_modules*|music*|output*|bower_components*"
+
 # Local Variables:
 # tab-width: 8
 # makefile-backslash-column: 79
