@@ -79,14 +79,18 @@ minify: ${MINTARGETS}
 ${DISTDIRS}:
 	@mkdir -p ${DISTDIRS}
 
-dist: ${DISTDIRS} build
+dist: ${DISTDIRS} build dist-restheart dist-config
 	@cp ${MINTARGETS} ${PUBCSS}
 #       @cp ${ELMTARGETS} ${PUBLIC}
 	@cp -r ${STATIC}fonts ${PUBSTATIC}
-	@cp ${LIB}/restheart-2.0.0/restheart.jar ${DIST}
+
+dist-restheart:
+	@cp ${LIB}/restheart/target/restheart.jar ${DIST}
+
+dist-config:
 	@cp -r etc/ ${DIST}
 
-restheart:
+restheart: ${DISTDIRS} dist-restheart dist-config
 	java -server -jar ${DIST}restheart.jar etc/restheart.yml
 
 watch:

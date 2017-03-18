@@ -1,0 +1,3 @@
+[submodule "lib/restheart"]
+	path = lib/restheart
+	url = git@github.com:SoftInstigate/restheart.git
