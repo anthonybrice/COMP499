@@ -21,18 +21,18 @@ PUBSTATIC = ${PUBLIC}static/
 PUBCSS = ${PUBSTATIC}css/
 
 # elm variables
-ELM_MAKEFLAGS = --warn
-ELMOUT = index.html
-ELMMAIN = ${SRC}main.elm
-ELMTARGETS = ${WWW}${ELMOUT}
-ELMPATTERN = ${SRC}*.elm
+# ELM_MAKEFLAGS = --warn
+# ELMOUT = index.html
+# ELMMAIN = ${SRC}main.elm
+# ELMTARGETS = ${WWW}${ELMOUT}
+# ELMPATTERN = ${SRC}*.elm
 
 # lessc variables
 LESSCFLAGS = --no-ie-compat --verbose
 LESSCPATTERN = ${STY}*.less
 
 # bootstrap variables
-BSDIR = ${LIB}bootstrap/build/
+BSDIR = ${LIB}bootstrap/virtualdom elmbuild/
 BSTARGETS :=									\
 	$(patsubst								\
 		${BSDIR}%,							\
@@ -56,8 +56,8 @@ all: dist
 
 build: ${ELMTARGETS} ${MINTARGETS}
 
-${ELMTARGETS}: ${ELMPATTERN} | ${STATIC}
-	@elm make ${ELMMAIN} --output $@ ${ELM_MAKEFLAGS}
+# ${ELMTARGETS}: ${ELMPATTERN} | ${STATIC}
+#	@elm make ${ELMMAIN} --output $@ ${ELM_MAKEFLAGS}
 
 ${CSS}%.min.css: ${CSS}%.css
 	@yuicompressor -o $@ $<
@@ -81,7 +81,7 @@ ${DISTDIRS}:
 
 dist: ${DISTDIRS} build
 	@cp ${MINTARGETS} ${PUBCSS}
-	@cp ${ELMTARGETS} ${PUBLIC}
+#       @cp ${ELMTARGETS} ${PUBLIC}
 	@cp -r ${STATIC}fonts ${PUBSTATIC}
 	@cp ${LIB}/restheart-2.0.0/restheart.jar ${DIST}
 	@cp -r etc/ ${DIST}
